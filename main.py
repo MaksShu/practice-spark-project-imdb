@@ -110,7 +110,7 @@ def directors_rating():
     # Prepare data
     # Remove rows where directors column value is null and parse directors column into separate rows
     directors_df = crew_df.filter(f.col(crew_directors).isNotNull())\
-                .select(title_id, f.explode(f.split(f.col(crew_directors), ",")).alias(director))
+                          .select(title_id, f.explode(f.split(f.col(crew_directors), ",")).alias(director))
     # Get titles with rating more than 8
     min_rating = 8
     ratings_more_than_8_df = ratings_df.filter(f.col(ratings_average) > min_rating)

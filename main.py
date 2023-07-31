@@ -268,3 +268,15 @@ def rating_statistics():
 
 rating_stats_df = rating_statistics()
 
+
+def write_csv(df: pyspark.sql.DataFrame, name):
+    path = './results/' + name
+    df.write.csv(path, header=True, mode='overwrite')
+
+
+write_csv(directors_rating_df, 'directors_rating_df')
+write_csv(titles_by_genres_df, 'titles_by_genres_df ')
+write_csv(top_3_by_type_df, 'top_3_by_type_df')
+write_csv(top_20_by_length_df, 'top_20_by_length_df')
+write_csv(length_rating_df, 'length_rating_df')
+write_csv(rating_stats_df, 'rating_stats_df')

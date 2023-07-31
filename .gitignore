@@ -152,4 +152,5 @@ cython_debug/
 #.idea/
 
 data/
-Dockerfile.uu
+*.gz
+Dockerfile

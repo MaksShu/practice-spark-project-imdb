@@ -20,3 +20,13 @@ crew_writers = 'writers'
 
 ratings_average = 'averageRating'
 ratings_votes = 'numVotes'
+
+director = 'directorId'
+titles_count = 'titlesCount'
+alive = 'isAlive'
+
+genre = 'genre'
+
+rank = 'rank'
+
+average_rating_length = 'averageRatingOverLength'

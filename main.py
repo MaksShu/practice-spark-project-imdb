@@ -2,7 +2,7 @@ import pyspark
 from columns import *
 
 from pyspark import SparkConf
-from pyspark.sql import SparkSession, Window
+from pyspark.sql import SparkSession, Window, DataFrame
 import pyspark.sql.types as t
 import pyspark.sql.functions as f
 
@@ -23,7 +23,7 @@ ratings_path = './data/title.ratings.tsv.gz'
 
 
 # Read datasets into dataframes
-def create_dataframes():
+def create_dataframes(names_path: DataFrame, titles_path: DataFrame, crew_path: DataFrame, ratings_path: DataFrame):
     # Create schema for names dataset
     names_schema = t.StructType([t.StructField(name_id, t.StringType(), False),
                                  t.StructField(name_primary_name, t.StringType(), False),
@@ -68,10 +68,10 @@ def create_dataframes():
     return names_df, titles_df, crew_df, ratings_df
 
 
-names_df, titles_df, crew_df, ratings_df = create_dataframes()
+names_df, titles_df, crew_df, ratings_df = create_dataframes(names_path, titles_path, crew_path, ratings_path)
 
 
-def analyse_data():
+def analyse_data(names_df: DataFrame, titles_df: DataFrame, crew_df: DataFrame, ratings_df: DataFrame):
     # Show first 20 rows of each dataframe
     names_df.show()
     titles_df.show()
@@ -102,11 +102,11 @@ def analyse_data():
     ratings_df.select(ratings_average, ratings_votes).summary().show()
 
 
-analyse_data()
+analyse_data(names_df, titles_df, crew_df, ratings_df)
 
 
 # Calculate rating of directors by amount of titles with rating more than 8
-def directors_rating():
+def directors_rating(crew_df: DataFrame, ratings_df: DataFrame, names_df: DataFrame) -> DataFrame:
     # Prepare data
     # Remove rows where directors column value is null and parse directors column into separate rows
     directors_df = crew_df.filter(f.col(crew_directors).isNotNull())\
@@ -142,11 +142,11 @@ def directors_rating():
     return directors_rating_df
 
 
-directors_rating_df = directors_rating()
+directors_rating_df = directors_rating(crew_df, ratings_df, names_df)
 
 
 # Calculate statistics over amount of films that started after 2020 by genres
-def genres_rating():
+def genres_rating(titles_df: DataFrame) -> DataFrame:
     # Prepare data
     # Remove rows where start year or genres column value is null,
     # then filter titles by start year,
@@ -167,11 +167,11 @@ def genres_rating():
     return titles_by_genres_df
 
 
-titles_by_genres_df = genres_rating()
+titles_by_genres_df = genres_rating(titles_df)
 
 
 # Find top 3 titles of each type by rating and votes number
-def top_3_by_type():
+def top_3_by_type(titles_df: DataFrame, ratings_df: DataFrame) -> DataFrame:
     # Create window to go through titles by type
     # and sort them by rating and number of votes descending in each partition
     window = Window.partitionBy(title_type).orderBy(f.col(ratings_average).desc(), f.col(ratings_votes).desc())
@@ -193,11 +193,11 @@ def top_3_by_type():
     return top_3_by_type_df
 
 
-top_3_by_type_df = top_3_by_type()
+top_3_by_type_df = top_3_by_type(titles_df, ratings_df)
 
 
 # Among titles with rating more than 9 show first 20 by length
-def top_20_by_length():
+def top_20_by_length(titles_df: DataFrame) -> DataFrame:
     # Remove rows where runtimeMinutes is null
     # then join titles and rating dataframes on title id
     # then order by runtimeMinutes in descending order
@@ -216,11 +216,11 @@ def top_20_by_length():
     return top_20_by_length_df
 
 
-top_20_by_length_df = top_20_by_length()
+top_20_by_length_df = top_20_by_length(titles_df)
 
 
 # Among titles with equal length find average rating and show top 5 by rating for each length
-def length_rating():
+def length_rating(titles_df: DataFrame, ratings_df: DataFrame) -> DataFrame:
     # Create window to go through titles by length
     # and sort them by rating and vote number descending in each partition
     window = Window.partitionBy(title_minutes).orderBy(f.col(ratings_average).desc(), f.col(ratings_votes).desc())
@@ -249,11 +249,11 @@ def length_rating():
     return length_rating_df
 
 
-length_rating_df = length_rating()
+length_rating_df = length_rating(titles_df, ratings_df)
 
 
 # For each rating calculate overall amount of titles and votes
-def rating_statistics():
+def rating_statistics(ratings_df: DataFrame) -> DataFrame:
     # Group dataframe by ratings and count titles and sum of votes for each rating
     # then order by rating in descending order
     rating_stats_df = ratings_df.groupBy(ratings_average)\
@@ -266,10 +266,10 @@ def rating_statistics():
     return rating_stats_df
 
 
-rating_stats_df = rating_statistics()
+rating_stats_df = rating_statistics(ratings_df)
 
 
-def write_csv(df: pyspark.sql.DataFrame, name):
+def write_csv(df: DataFrame, name):
     path = './results/' + name
     df.write.csv(path, header=True, mode='overwrite')
 

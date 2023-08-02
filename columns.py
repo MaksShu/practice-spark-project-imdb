@@ -1,3 +1,5 @@
+# Here are names for all columns used in dataframes
+
 name_id = 'nconst'
 name_primary_name = 'primaryName'
 name_birth_year = 'birthYear'

@@ -1,5 +1,4 @@
-import pyspark
-from columns import *
+from schemas import *
 
 from pyspark import SparkConf
 from pyspark.sql import SparkSession, Window, DataFrame
@@ -24,51 +23,19 @@ ratings_path = './data/title.ratings.tsv.gz'
 
 # Read datasets into dataframes
 def create_dataframes(names_path: DataFrame, titles_path: DataFrame, crew_path: DataFrame, ratings_path: DataFrame):
-    # Create schema for names dataset
-    names_schema = t.StructType([t.StructField(name_id, t.StringType(), False),
-                                 t.StructField(name_primary_name, t.StringType(), False),
-                                 t.StructField(name_birth_year, t.IntegerType(), True),
-                                 t.StructField(name_death_year, t.IntegerType(), True),
-                                 t.StructField(name_primary_profession, t.StringType(), True),
-                                 t.StructField(name_known_for, t.StringType(), True)])
-
     # Create names dataframe from csv file, where separator is \t, columns has headers and null value is \N
     names_df = spark_session.read.csv(names_path, schema=names_schema, sep='\t', header=True, nullValue="\\N")
-
-    # Create schema for basics dataset
-    titles_schema = t.StructType([t.StructField(title_id, t.StringType(), False),
-                                  t.StructField(title_type, t.StringType(), True),
-                                  t.StructField(title_primary, t.StringType(), True),
-                                  t.StructField(title_original, t.StringType(), True),
-                                  t.StructField(title_adult, t.IntegerType(), True),
-                                  t.StructField(title_start_year, t.IntegerType(), True),
-                                  t.StructField(title_end_year, t.IntegerType(), True),
-                                  t.StructField(title_minutes, t.StringType(), True),
-                                  t.StructField(title_genres, t.StringType(), True)])
 
     # Create basics dataframe from csv file, where separator is \t, columns has headers and null value is \N
     titles_df = spark_session.read.csv(titles_path, schema=titles_schema, sep='\t', header=True, nullValue="\\N")
 
-    # Create schema for crew dataset
-    crew_schema = t.StructType([t.StructField(title_id, t.StringType(), False),
-                                t.StructField(crew_directors, t.StringType(), True),
-                                t.StructField(crew_writers, t.StringType(), True)])
-
     # Create crew dataframe from csv file, where separator is \t, columns has headers and null value is \N
     crew_df = spark_session.read.csv(crew_path, schema=crew_schema, sep='\t', header=True, nullValue="\\N")
-
-    # Create schema for ratings dataset
-    ratings_schema = t.StructType([t.StructField(title_id, t.StringType(), False),
-                                   t.StructField(ratings_average, t.FloatType(), True),
-                                   t.StructField(ratings_votes, t.IntegerType(), True)])
 
     # Create ratings dataframe from csv file, where separator is \t, columns has headers and null value is \N
     ratings_df = spark_session.read.csv(ratings_path, schema=ratings_schema, sep='\t', header=True, nullValue="\\N")
 
     return names_df, titles_df, crew_df, ratings_df
-
-
-names_df, titles_df, crew_df, ratings_df = create_dataframes(names_path, titles_path, crew_path, ratings_path)
 
 
 def analyse_data(names_df: DataFrame, titles_df: DataFrame, crew_df: DataFrame, ratings_df: DataFrame):
@@ -100,9 +67,6 @@ def analyse_data(names_df: DataFrame, titles_df: DataFrame, crew_df: DataFrame, 
     names_df.select(name_birth_year, name_death_year).summary().show()
     titles_df.select(title_adult, title_start_year, title_end_year, title_minutes).summary().show()
     ratings_df.select(ratings_average, ratings_votes).summary().show()
-
-
-analyse_data(names_df, titles_df, crew_df, ratings_df)
 
 
 # Calculate rating of directors by amount of titles with rating more than 8
@@ -142,9 +106,6 @@ def directors_rating(crew_df: DataFrame, ratings_df: DataFrame, names_df: DataFr
     return directors_rating_df
 
 
-directors_rating_df = directors_rating(crew_df, ratings_df, names_df)
-
-
 # Calculate statistics over amount of films that started after 2020 by genres
 def genres_rating(titles_df: DataFrame) -> DataFrame:
     # Prepare data
@@ -165,9 +126,6 @@ def genres_rating(titles_df: DataFrame) -> DataFrame:
     titles_by_genres_df.show(50, truncate=False)
 
     return titles_by_genres_df
-
-
-titles_by_genres_df = genres_rating(titles_df)
 
 
 # Find top 3 titles of each type by rating and votes number
@@ -193,11 +151,8 @@ def top_3_by_type(titles_df: DataFrame, ratings_df: DataFrame) -> DataFrame:
     return top_3_by_type_df
 
 
-top_3_by_type_df = top_3_by_type(titles_df, ratings_df)
-
-
 # Among titles with rating more than 9 show first 20 by length
-def top_20_by_length(titles_df: DataFrame) -> DataFrame:
+def top_20_by_length(titles_df: DataFrame, ratings_df: DataFrame) -> DataFrame:
     # Remove rows where runtimeMinutes is null
     # then join titles and rating dataframes on title id
     # then order by runtimeMinutes in descending order
@@ -214,9 +169,6 @@ def top_20_by_length(titles_df: DataFrame) -> DataFrame:
     top_20_by_length_df.show(truncate=False)
 
     return top_20_by_length_df
-
-
-top_20_by_length_df = top_20_by_length(titles_df)
 
 
 # Among titles with equal length find average rating and show top 5 by rating for each length
@@ -249,9 +201,6 @@ def length_rating(titles_df: DataFrame, ratings_df: DataFrame) -> DataFrame:
     return length_rating_df
 
 
-length_rating_df = length_rating(titles_df, ratings_df)
-
-
 # For each rating calculate overall amount of titles and votes
 def rating_statistics(ratings_df: DataFrame) -> DataFrame:
     # Group dataframe by ratings and count titles and sum of votes for each rating
@@ -266,17 +215,31 @@ def rating_statistics(ratings_df: DataFrame) -> DataFrame:
     return rating_stats_df
 
 
-rating_stats_df = rating_statistics(ratings_df)
-
-
 def write_csv(df: DataFrame, name):
     path = './results/' + name
     df.write.csv(path, header=True, mode='overwrite')
 
 
-write_csv(directors_rating_df, 'directors_rating_df')
-write_csv(titles_by_genres_df, 'titles_by_genres_df ')
-write_csv(top_3_by_type_df, 'top_3_by_type_df')
-write_csv(top_20_by_length_df, 'top_20_by_length_df')
-write_csv(length_rating_df, 'length_rating_df')
-write_csv(rating_stats_df, 'rating_stats_df')
+if __name__ == "__main__":
+    names_df, titles_df, crew_df, ratings_df = create_dataframes(names_path, titles_path, crew_path, ratings_path)
+
+    analyse_data(names_df, titles_df, crew_df, ratings_df)
+
+    directors_rating_df = directors_rating(crew_df, ratings_df, names_df)
+
+    titles_by_genres_df = genres_rating(titles_df)
+
+    top_3_by_type_df = top_3_by_type(titles_df, ratings_df)
+
+    top_20_by_length_df = top_20_by_length(titles_df, ratings_df)
+
+    length_rating_df = length_rating(titles_df, ratings_df)
+
+    rating_stats_df = rating_statistics(ratings_df)
+
+    write_csv(directors_rating_df, 'directors_rating_df')
+    write_csv(titles_by_genres_df, 'titles_by_genres_df ')
+    write_csv(top_3_by_type_df, 'top_3_by_type_df')
+    write_csv(top_20_by_length_df, 'top_20_by_length_df')
+    write_csv(length_rating_df, 'length_rating_df')
+    write_csv(rating_stats_df, 'rating_stats_df')

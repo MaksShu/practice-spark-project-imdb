@@ -9,7 +9,10 @@ COPY --from=py3 / /
 
 ARG PYSPARK_VERSION=3.2.0
 RUN pip --no-cache-dir install pyspark==${PYSPARK_VERSION}
+RUN pip --no-cache-dir install pytest
+RUN pip --no-cache-dir install pyspark_test
 
 COPY . .
 
+CMD pytest test.py
 CMD python main.py
